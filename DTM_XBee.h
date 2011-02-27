@@ -109,6 +109,9 @@ public:
 	unsigned long getHighAddr() const { return highAddr; }
 	unsigned long getLowAddr() const { return lowAddr; }
 	
+protected:
+	void bumpID();
+	
 public:
 	byte frameID;
 	
@@ -128,8 +131,8 @@ public:
 	XBeeATCmdPacket( word _shortAddr );
 	XBeeATCmdPacket( unsigned long _highAddr, unsigned long _lowAddr );
 	
-	void set( char _cmd1, char _cmd2, const char *arg );
-	void set( char _cmd1, char _cmd2 );
+	void set( char _cmd1, char _cmd2, const char *arg=NULL );
+	//void set( char _cmd1, char _cmd2 );
 	void set( const char *cmd );
 	//void set( char cmd1, char cmd2, unsigned long arg );
 	
@@ -138,6 +141,12 @@ public:
 	const char *getArg() const { return strArg; }
 	
 public:
+	/**
+	 * For local commands, this controls wether or not the apply immediatly or are queued.
+	 * If true, they apply immediately (API ID 0x08).  If false they queue (API ID 0x09)
+	 * For remote commands this does the same thing essentially.
+	 * The default is true (changes apply immediatly)
+	**/
 	bool applyChanges;
 private:
 	char cmd1;

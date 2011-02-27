@@ -93,16 +93,19 @@ void XBee::send( const XBeeTransmitPacket *packet )
 
 void XBee::sendAT( const XBeeATCmdPacket *packet )
 {
-	word len = 4;		// API ID + Frame ID + Cmd
+	word len = 4;		// API ID + Frame ID + Cmd Bytes
 	
+	if( ! packet->isLocalAddr() )
+	{
+		len += 11;	// 64-bit addr + 16-bit addr + option
+	}
+		
 	const char *arg = packet->getArg();
 	if( arg )
 	{
 		len += strlen(arg);
 	}
 	
-	//len += packet->isLocalAddr() ? 2 : 8;
-		
 	// Start
 	emit( START_DELIMITER );
 	
@@ -117,7 +120,7 @@ void XBee::sendAT( const XBeeATCmdPacket *packet )
 	// API ID
 	if( packet->isLocalAddr() )
 	{
-		emit( API_AT_CMD );
+		emit( packet->applyChanges ? API_AT_CMD : API_AT_CMD_QUEUED );
 	}
 	else
 	{
