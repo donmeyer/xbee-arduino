@@ -10,8 +10,8 @@
  * Local packet ctor.  Should only be used for AT commands.
 **/
 XBeeOutboundPacket::XBeeOutboundPacket()
-:	frameID( DEFAULT_FRAME_ID ),
-	addrType( ADDR_LOCAL )
+:	XBeePacket(),
+	frameID( DEFAULT_FRAME_ID )
 {
 }
 
@@ -21,9 +21,8 @@ XBeeOutboundPacket::XBeeOutboundPacket()
  * Base class ctor.
 **/
 XBeeOutboundPacket::XBeeOutboundPacket( word _shortAddr )
-:	frameID( DEFAULT_FRAME_ID ),
-	addrType( ADDR_SHORT ),
-	shortAddr( _shortAddr )
+:	XBeePacket( _shortAddr ),
+	frameID( DEFAULT_FRAME_ID )
 {
 }
 
@@ -32,11 +31,8 @@ XBeeOutboundPacket::XBeeOutboundPacket( word _shortAddr )
  * Base class ctor.
 **/
 XBeeOutboundPacket::XBeeOutboundPacket( unsigned long _highAddr, unsigned long _lowAddr )
-:	frameID( DEFAULT_FRAME_ID ),
-	addrType( ADDR_LONG ),
-	highAddr( _highAddr ),
-	lowAddr( _lowAddr ),
-	shortAddr( 0xFFFE )			// Needed for the remote AT command
+:	XBeePacket( _highAddr, _lowAddr ),
+	frameID( DEFAULT_FRAME_ID )
 {	
 }
 

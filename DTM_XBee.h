@@ -9,7 +9,7 @@
 #include "WProgram.h"
 
 
-#define DEBUG
+//#define DEBUG
 
 
 class XBeeReceivePacket;
@@ -55,29 +55,65 @@ private:
 	static const byte API_RX_16 = 0x81;
 	static const byte API_RX_64 = 0x80;
 
-
+private:	
 	// These variables apply to the inbound packet.
 	byte inboundCsum;			// Checksum of the inbound packet
 	byte outboundCsum;
 	bool complete;		// True if the packet is complete
-	enum { S_EMPTY, S_COMPLETE } state;
+	int inboundCount;
+	int needCount;
+	int inboundLen;
+	enum { S_EMPTY, S_GOT_START, S_GOT_HI_LEN, S_GOT_LO_LEN, S_GOT_API, S_COMPLETE } state;
 };
 
 
 
 
-class XBeeReceivePacket {
+/**
+ * Virtual base class for all packets
+**/
+class XBeePacket {
 public:
-	XBeeReceivePacket( byte *_frameBuf, size_t _frameBufLen );
+	bool isLocalAddr() const { return addrType == ADDR_LOCAL; }
+	bool isShortAddr() const { return addrType == ADDR_SHORT; }
+	bool isLongAddr() const { return addrType == ADDR_LONG; }
 	
-public:
+	word getShortAddr() const { return shortAddr; }
+	unsigned long getHighAddr() const { return highAddr; }
+	unsigned long getLowAddr() const { return lowAddr; }
+
+protected:
+	XBeePacket();
+	XBeePacket( word _shortAddr );
+	XBeePacket( unsigned long _highAddr, unsigned long _lowAddr );
+		
+protected:
+	enum { ADDR_LOCAL, ADDR_SHORT, ADDR_LONG } addrType;
+	
 	word shortAddr;
 	unsigned long highAddr;
 	unsigned long lowAddr;
+};
+
+
+
+class XBeeReceivePacket : public XBeePacket {
+public:
+	friend bool XBee::receiveWait( XBeeReceivePacket*, int );
 	
+	XBeeReceivePacket( byte *_frameBuf, size_t _frameBufLen );
+	
+public:
+	enum { STATUS, AT_RESP, AT_RESP_REMOTE, TX_STATUS, RX } type;
 	byte apiID;
 	byte rssi;
 	byte options;
+	
+	// Make these accessors that pluck the data from the frame buffer
+	byte frameID;	// AT Cmd Resp
+	byte status;	// AT Cmd resp
+	char cmd1;		// AT Cmd resp
+	char cmd2;		// AT Cmd resp
 
 private:
 	byte *frameBuf;
@@ -91,7 +127,7 @@ private:
 /**
  * Virtual base class for all outbound packets
 **/
-class XBeeOutboundPacket {
+class XBeeOutboundPacket : public XBeePacket {
 public:
 	static const byte DEFAULT_FRAME_ID = 0x01;
 	
@@ -100,15 +136,6 @@ protected:
 	XBeeOutboundPacket( word _shortAddr );
 	XBeeOutboundPacket( unsigned long _highAddr, unsigned long _lowAddr );
 	
-public:
-	bool isLocalAddr() const { return addrType == ADDR_LOCAL; }
-	bool isShortAddr() const { return addrType == ADDR_SHORT; }
-	bool isLongAddr() const { return addrType == ADDR_LONG; }
-	
-	word getShortAddr() const { return shortAddr; }
-	unsigned long getHighAddr() const { return highAddr; }
-	unsigned long getLowAddr() const { return lowAddr; }
-	
 protected:
 	void bumpID();
 	
@@ -116,11 +143,6 @@ public:
 	byte frameID;
 	
 private:
-	enum { ADDR_LOCAL, ADDR_SHORT, ADDR_LONG } addrType;
-	
-	word shortAddr;
-	unsigned long highAddr;
-	unsigned long lowAddr;
 };
 
 

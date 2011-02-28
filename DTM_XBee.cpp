@@ -5,6 +5,47 @@
 
 
 
+/**
+ * Base class ctor.
+ * 
+ * Local packet ctor.  Should only be used for AT commands.
+**/
+XBeePacket::XBeePacket()
+:	addrType( ADDR_LOCAL )
+{
+}
+
+
+
+/**
+ * Base class ctor.
+**/
+XBeePacket::XBeePacket( word _shortAddr )
+:	addrType( ADDR_SHORT ),
+	shortAddr( _shortAddr )
+{
+}
+
+
+/**
+ * Base class ctor.
+**/
+XBeePacket::XBeePacket( unsigned long _highAddr, unsigned long _lowAddr )
+:	addrType( ADDR_LONG ),
+	highAddr( _highAddr ),
+	lowAddr( _lowAddr ),
+	shortAddr( 0xFFFE )			// Needed for the remote AT command
+{	
+}
+
+
+//--------------------------------------------------------------------------------------------------
+//--------------------------------------------------------------------------------------------------
+//--------------------------------------------------------------------------------------------------
+//--------------------------------------------------------------------------------------------------
+//--------------------------------------------------------------------------------------------------
+
+
 XBee::XBee()
 :	complete( false ),
 	state( S_EMPTY )
@@ -19,6 +60,10 @@ void XBee::begin( unsigned long baud )
 }
 
 
+bool clientAvailable();
+int clientRead();
+void debug( const char *name, byte b );
+void debug( const char *name, int x );
 
 /**
  * This returns true if a message packet has been completely received and is ready to be processed.  In this case you MUST handle the message
@@ -27,7 +72,66 @@ void XBee::begin( unsigned long baud )
 **/ 
 bool XBee::receiveWait( XBeeReceivePacket *packet, int timeout )
 {
+	if( state == S_COMPLETE )
+	{
+		state = S_EMPTY;
+	}
 	
+	while( clientAvailable() )
+	{
+		byte b = clientRead();
+		
+		debug( "Packet char", b );
+		
+		if( state == S_EMPTY )
+		{
+			// Looking for the start delimiter
+			if( b == START_DELIMITER )
+			{
+				state = S_GOT_START;
+			}
+		}
+		else if( state == S_GOT_START )
+		{			
+			inboundLen = b<<8;
+			state = S_GOT_HI_LEN;
+		}
+		else if( state == S_GOT_HI_LEN )
+		{
+			inboundLen |= b;
+			debug( "Inbund len", inboundLen );
+			state = S_GOT_LO_LEN;
+		}
+		else if( state == S_GOT_LO_LEN )
+		{
+			packet->frameID = b;
+			inboundCsum = b;
+			inboundCount = 0;
+			needCount = inboundLen - 1;
+			state = S_GOT_API;
+		}
+		else if( state == S_GOT_API )
+		{
+			// Now we just accumulate characters into the frame buffer
+			debug( "Need", needCount );
+			if( needCount-- )
+			{
+				inboundCsum += b;
+				packet->frameBuf[inboundCount++] = b;
+			}
+			else
+			{
+				// Don't need any more, so this is the checksum!
+				debug( "Got csum", b );
+				debug( "Calc csum", inboundCsum );
+				debug( "Tot csum", (byte)(inboundCsum + b) );
+				state = S_COMPLETE;
+				return true;
+			}
+		}
+	}
+	
+	return false;
 }
 
 
@@ -191,6 +295,7 @@ void XBee::emitLongAddr( const XBeeOutboundPacket *packet )
 	emit( addr & 0x000000FF );	
 }
 
+void clientWrite( byte b );
 
 void XBee::emit( byte b )
 {
@@ -198,7 +303,8 @@ void XBee::emit( byte b )
 	Serial.print( b, HEX );
 	Serial.print( " " );
 #else
-	Serial.write( b );
+	//Serial.write( b );
+	clientWrite( b );
 #endif
 	outboundCsum += b;	
 }
