@@ -5,17 +5,14 @@
 #define DTM_XBEE_H
 
 
-
 #include "WProgram.h"
+
+#include "Packet.h"
+#include "ReceivePacket.h"
+#include "TransmitPacket.h"
 
 
 //#define DEBUG
-
-
-class XBeeReceivePacket;
-class XBeeTransmitPacket;
-class XBeeOutboundPacket;
-class XBeeATCmdPacket;
 
 
 
@@ -55,148 +52,19 @@ private:
 	static const byte API_RX_16 = 0x81;
 	static const byte API_RX_64 = 0x80;
 
+public:
+	// Some statistics
+	int overflowCount;
+	int badChecksumCount;
+	
 private:	
+	byte outboundCsum;			// This is an instance variable so we can share it with the emit() method.
+
 	// These variables apply to the inbound packet.
 	byte inboundCsum;			// Checksum of the inbound packet
-	byte outboundCsum;
-	bool complete;		// True if the packet is complete
-	int inboundCount;
-	int needCount;
-	int inboundLen;
+	int inboundLen;			// Length value from the incoming packet.
 	enum { S_EMPTY, S_GOT_START, S_GOT_HI_LEN, S_GOT_LO_LEN, S_GOT_API, S_COMPLETE } state;
 };
-
-
-
-
-/**
- * Virtual base class for all packets
-**/
-class XBeePacket {
-public:
-	bool isLocalAddr() const { return addrType == ADDR_LOCAL; }
-	bool isShortAddr() const { return addrType == ADDR_SHORT; }
-	bool isLongAddr() const { return addrType == ADDR_LONG; }
-	
-	word getShortAddr() const { return shortAddr; }
-	unsigned long getHighAddr() const { return highAddr; }
-	unsigned long getLowAddr() const { return lowAddr; }
-
-protected:
-	XBeePacket();
-	XBeePacket( word _shortAddr );
-	XBeePacket( unsigned long _highAddr, unsigned long _lowAddr );
-		
-protected:
-	enum { ADDR_LOCAL, ADDR_SHORT, ADDR_LONG } addrType;
-	
-	word shortAddr;
-	unsigned long highAddr;
-	unsigned long lowAddr;
-};
-
-
-
-class XBeeReceivePacket : public XBeePacket {
-public:
-	friend bool XBee::receiveWait( XBeeReceivePacket*, int );
-	
-	XBeeReceivePacket( byte *_frameBuf, size_t _frameBufLen );
-	
-public:
-	enum { STATUS, AT_RESP, AT_RESP_REMOTE, TX_STATUS, RX } type;
-	byte apiID;
-	byte rssi;
-	byte options;
-	
-	// Make these accessors that pluck the data from the frame buffer
-	byte frameID;	// AT Cmd Resp
-	byte status;	// AT Cmd resp
-	char cmd1;		// AT Cmd resp
-	char cmd2;		// AT Cmd resp
-
-private:
-	byte *frameBuf;
-	size_t frameBufLen;
-	size_t bufferSize;
-	bool overflow;
-};
-
-
-
-/**
- * Virtual base class for all outbound packets
-**/
-class XBeeOutboundPacket : public XBeePacket {
-public:
-	static const byte DEFAULT_FRAME_ID = 0x01;
-	
-protected:
-	XBeeOutboundPacket();
-	XBeeOutboundPacket( word _shortAddr );
-	XBeeOutboundPacket( unsigned long _highAddr, unsigned long _lowAddr );
-	
-protected:
-	void bumpID();
-	
-public:
-	byte frameID;
-	
-private:
-};
-
-
-
-class XBeeATCmdPacket : public XBeeOutboundPacket {
-public:
-	XBeeATCmdPacket();
-	XBeeATCmdPacket( word _shortAddr );
-	XBeeATCmdPacket( unsigned long _highAddr, unsigned long _lowAddr );
-	
-	void set( char _cmd1, char _cmd2, const char *arg=NULL );
-	//void set( char _cmd1, char _cmd2 );
-	void set( const char *cmd );
-	//void set( char cmd1, char cmd2, unsigned long arg );
-	
-	char getCmd1() const { return cmd1; }
-	char getCmd2() const { return cmd2; }
-	const char *getArg() const { return strArg; }
-	
-public:
-	/**
-	 * For local commands, this controls wether or not the apply immediatly or are queued.
-	 * If true, they apply immediately (API ID 0x08).  If false they queue (API ID 0x09)
-	 * For remote commands this does the same thing essentially.
-	 * The default is true (changes apply immediatly)
-	**/
-	bool applyChanges;
-private:
-	char cmd1;
-	char cmd2;
-	//char argBuf[9];
-	const char *strArg;
-};
-
-
-
-class XBeeTransmitPacket : public XBeeOutboundPacket {
-public:
-	XBeeTransmitPacket( word _shortAddr, const void *_payload, size_t _payloadSize );
-	XBeeTransmitPacket( unsigned long _highAddr, unsigned long _lowAddr, const void *_payload, size_t _payloadSize );
-	
-	void setPayload( const void *_payload, size_t _payloadSize ) { payload = (const byte*)_payload; payloadSize = _payloadSize; }
-	
-	size_t getPayloadSize() const { return payloadSize; }
-	const byte *getPayload() const { return payload; }
-	
-public:
-	bool disableAck;
-	bool broadcastPAN;
-private:
-	const byte *payload;
-	size_t payloadSize;
-};
-
 
 
 #endif

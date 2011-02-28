@@ -1,42 +1,8 @@
 // DTM_XBee.cpp
 
 
-#include "DTM_Xbee.h"
+#include "DTM_XBee.h"
 
-
-
-/**
- * Base class ctor.
- * 
- * Local packet ctor.  Should only be used for AT commands.
-**/
-XBeePacket::XBeePacket()
-:	addrType( ADDR_LOCAL )
-{
-}
-
-
-
-/**
- * Base class ctor.
-**/
-XBeePacket::XBeePacket( word _shortAddr )
-:	addrType( ADDR_SHORT ),
-	shortAddr( _shortAddr )
-{
-}
-
-
-/**
- * Base class ctor.
-**/
-XBeePacket::XBeePacket( unsigned long _highAddr, unsigned long _lowAddr )
-:	addrType( ADDR_LONG ),
-	highAddr( _highAddr ),
-	lowAddr( _lowAddr ),
-	shortAddr( 0xFFFE )			// Needed for the remote AT command
-{	
-}
 
 
 //--------------------------------------------------------------------------------------------------
@@ -47,8 +13,9 @@ XBeePacket::XBeePacket( unsigned long _highAddr, unsigned long _lowAddr )
 
 
 XBee::XBee()
-:	complete( false ),
-	state( S_EMPTY )
+:	state( S_EMPTY ),
+	overflowCount( 0 ),
+	badChecksumCount( 0 )
 {	
 }
 
@@ -69,6 +36,9 @@ void debug( const char *name, int x );
  * This returns true if a message packet has been completely received and is ready to be processed.  In this case you MUST handle the message
  * before calling this method again, as the next call will discard the current packet's data and start building a new one.
  * If the timeout is zero, this will return immediately if no incoming characters are available at the XBee serial port.
+ * 
+ * If a packet's payload overflows the frame buffer provided, this will still result in a 'true' from this call (assuming of course
+ * that the checksum is correct).  The XBee overflow count statistic wil be incremented and the packet's 'overflow' indicator will be set.
 **/ 
 bool XBee::receiveWait( XBeeReceivePacket *packet, int timeout )
 {
@@ -104,29 +74,52 @@ bool XBee::receiveWait( XBeeReceivePacket *packet, int timeout )
 		}
 		else if( state == S_GOT_LO_LEN )
 		{
-			packet->frameID = b;
+			packet->apiID = b;
 			inboundCsum = b;
-			inboundCount = 0;
-			needCount = inboundLen - 1;
+			packet->payloadSize = 0;
+			//needCount = inboundLen - 1;
 			state = S_GOT_API;
 		}
 		else if( state == S_GOT_API )
 		{
 			// Now we just accumulate characters into the frame buffer
-			debug( "Need", needCount );
-			if( needCount-- )
+			debug( "Payload Size", packet->payloadSize );
+			if( packet->payloadSize < (inboundLen-1) )
 			{
-				inboundCsum += b;
-				packet->frameBuf[inboundCount++] = b;
+				if( packet->payloadSize < packet->frameBufLen )
+				{
+					inboundCsum += b;
+					packet->frameBuf[packet->payloadSize++] = b;					
+				}
+				else
+				{
+					// Overflow
+					if( packet->overflow == 0 )
+					{
+						// Log this overflow one time
+						overflowCount++;
+					}
+					packet->overflow++;
+				}
 			}
 			else
 			{
 				// Don't need any more, so this is the checksum!
-				debug( "Got csum", b );
-				debug( "Calc csum", inboundCsum );
-				debug( "Tot csum", (byte)(inboundCsum + b) );
-				state = S_COMPLETE;
-				return true;
+				debug( "Got csum byte", b );
+				inboundCsum += b;
+				debug( "Final checksum", inboundCsum );
+				if( inboundCsum == 0xFF )
+				{
+					// Checksum is good
+					state = S_COMPLETE;
+					return true;
+				}
+				else
+				{
+					// Bad checksum.
+					badChecksumCount++;
+					state = S_EMPTY;		// Go back to looking for a new packet
+				}
 			}
 		}
 	}
