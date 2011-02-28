@@ -16,17 +16,23 @@ class XBeeReceivePacket : public XBeePacket {
 public:
 	//friend bool XBee::receiveWait( XBeeReceivePacket*, int );
 	friend class XBee;
+
+	enum PacketType { INVALID, STATUS, AT_RESP, AT_RESP_REMOTE, TX_STATUS, RX_DATA };
 	
+
 	XBeeReceivePacket( byte *_frameBuf, size_t _frameBufLen );
+	
+	bool isOK() const { return ( checksumOK && (overflow == 0) ); }
+
+	PacketType getType() const;
 	
 	int getPayloadSize() const { return payloadSize; }
 	
 	// TX Status
-	byte getFrameID() const { return frameBuf[0]; }
-	byte getStatus() const { return frameBuf[1]; }
+	byte getFrameID() const;
+	byte getStatus() const;
 	
 public:
-	enum { STATUS, AT_RESP, AT_RESP_REMOTE, TX_STATUS, RX_DATA } type;
 	byte apiID;
 	//byte rssi;
 	//byte options;
@@ -41,7 +47,8 @@ private:
 	byte *frameBuf;
 	size_t frameBufLen;
 	int payloadSize;
-	//size_t bufferSize;
+
+	bool checksumOK;
 	int overflow;	// If greater than zero, this indicates how many characters did not fit in the frame buffer.
 };
 

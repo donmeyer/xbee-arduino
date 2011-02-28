@@ -14,6 +14,7 @@
 
 XBee::XBee()
 :	state( S_EMPTY ),
+	onlyGoodPackets( true ),
 	overflowCount( 0 ),
 	badChecksumCount( 0 )
 {	
@@ -29,8 +30,12 @@ void XBee::begin( unsigned long baud )
 
 bool clientAvailable();
 int clientRead();
+void clientWrite( byte b );
+
 void debug( const char *name, byte b );
 void debug( const char *name, int x );
+
+
 
 /**
  * This returns true if a message packet has been completely received and is ready to be processed.  In this case you MUST handle the message
@@ -46,6 +51,8 @@ bool XBee::receiveWait( XBeeReceivePacket *packet, int timeout )
 	{
 		state = S_EMPTY;
 	}
+	
+	//unsigned long t = millis();
 	
 	while( clientAvailable() )
 	{
@@ -77,6 +84,7 @@ bool XBee::receiveWait( XBeeReceivePacket *packet, int timeout )
 			packet->apiID = b;
 			inboundCsum = b;
 			packet->payloadSize = 0;
+			packet->overflow = 0;
 			//needCount = inboundLen - 1;
 			state = S_GOT_API;
 		}
@@ -111,20 +119,39 @@ bool XBee::receiveWait( XBeeReceivePacket *packet, int timeout )
 				if( inboundCsum == 0xFF )
 				{
 					// Checksum is good
-					state = S_COMPLETE;
-					return true;
+					packet->checksumOK = true;
 				}
 				else
 				{
 					// Bad checksum.
 					badChecksumCount++;
-					state = S_EMPTY;		// Go back to looking for a new packet
+					packet->checksumOK = false;
 				}
+
+				state = S_COMPLETE;
+				break;
 			}
 		}
 	}
 	
-	return false;
+	if( state == S_COMPLETE )
+	{
+		if( ! onlyGoodPackets || packet->isOK() )
+		{
+			// Either we want bad packets or this one was good.
+			return true;
+		}
+		else
+		{
+			state = S_EMPTY;		// Go back to looking for a new packet									
+			return false;
+		}
+	}
+	else
+	{
+		// Not a complete packet yet, but we are still working on it.
+		return false;		
+	}
 }
 
 
@@ -288,7 +315,6 @@ void XBee::emitLongAddr( const XBeeOutboundPacket *packet )
 	emit( addr & 0x000000FF );	
 }
 
-void clientWrite( byte b );
 
 void XBee::emit( byte b )
 {

@@ -33,7 +33,7 @@ private:
 	void emitShortAddr( const XBeeOutboundPacket *packet );
 	void emitLongAddr( const XBeeOutboundPacket *packet );
 	
-private:	
+public:
 	static const byte START_DELIMITER = 0x7E;
 
 	// Transmit Data packets sent to the modem
@@ -53,6 +53,9 @@ private:
 	static const byte API_RX_64 = 0x80;
 
 public:
+	/** If true, we don't return packets that overflow or fail the checksum. */
+	bool onlyGoodPackets;
+	
 	// Some statistics
 	int overflowCount;
 	int badChecksumCount;
