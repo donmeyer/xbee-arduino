@@ -25,6 +25,9 @@ protected:
 	XBeePacket( word _shortAddr );
 	XBeePacket( unsigned long _highAddr, unsigned long _lowAddr );
 		
+	void parseShortAddr( byte *p );
+	void parseLongAddr( byte *p );
+	
 protected:
 	enum { ADDR_LOCAL, ADDR_SHORT, ADDR_LONG } addrType;
 	

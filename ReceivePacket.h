@@ -10,43 +10,58 @@
 
 class XBee;
 
+/*  
+                AT Response     Status     TX Status     RX Data
+                -----------     ------     ---------     -------
+ Frame ID             x                         x
+ Address              x                                      x
+ Cmd                  x
+ Status               x            x            x
+ RSSI                                                        x
+ Option bitmap                                               x
+ Data                 x                                      x
+*/
 
 
 class XBeeReceivePacket : public XBeePacket {
 public:
 	//friend bool XBee::receiveWait( XBeeReceivePacket*, int );
 	friend class XBee;
-
-	enum PacketType { INVALID, STATUS, AT_RESP, AT_RESP_REMOTE, TX_STATUS, RX_DATA };
 	
 
 	XBeeReceivePacket( byte *_frameBuf, size_t _frameBufLen );
-	
+
+	/** Returns true if the checksum was ok and there was no buffer overflow. */
 	bool isOK() const { return ( checksumOK && (overflow == 0) ); }
 
-	PacketType getType() const;
+	/** Valid for AT Response, RX Data */
+	//const byte *getPayload() const { return frameBuf; }
+
+	/** Valid for AT Response, RX Data */
+	//int getPayloadSize() const { return payloadSize; }
 	
-	int getPayloadSize() const { return payloadSize; }
+	bool isAddressBroadcast() const { return optionsmap & 0x01 ? true : false; }
+	bool isPANBroadcast() const { return optionsmap & 0x02 ? true : false; }
 	
-	// TX Status
-	byte getFrameID() const;
-	byte getStatus() const;
+protected:
+	void reset();
+	void populateFields();
 	
 public:
+	enum PacketType { INVALID, STATUS, AT_RESP, TX_STATUS, RX_DATA } type;
 	byte apiID;
-	//byte rssi;
-	//byte options;
+	byte rssi;
+	byte frameID;	// AT Cmd Resp
+	byte status;	// AT Cmd resp
+	char cmd[2];		// AT Cmd resp
+	int payloadSize;
+	byte *payloadPtr;
 	
-	// Make these accessors that pluck the data from the frame buffer
-	//byte frameID;	// AT Cmd Resp
-	//byte status;	// AT Cmd resp
-	//char cmd1;		// AT Cmd resp
-	//char cmd2;		// AT Cmd resp
-
 private:
 	byte *frameBuf;
 	size_t frameBufLen;
-	int payloadSize;
+
+	byte optionsmap;
 
 	bool checksumOK;
 	int overflow;	// If greater than zero, this indicates how many characters did not fit in the frame buffer.

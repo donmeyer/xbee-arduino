@@ -15,57 +15,78 @@ XBeeReceivePacket::XBeeReceivePacket( byte *_frameBuf, size_t _frameBufLen )
 }
 
 
-XBeeReceivePacket::PacketType XBeeReceivePacket::getType() const
+void XBeeReceivePacket::reset()
 {
+	addrType = ADDR_LOCAL;
+	payloadSize = 0;
+	checksumOK = false;
+	overflow = 0;
+}
+
+
+
+/**
+ * Called by the XBee class's receive method to fill in any cached fields in the receive packet.
+ * This is called after the packet has been completely received.
+**/
+void XBeeReceivePacket::populateFields()
+{
+	// Not valid for all packets, but this makes the code smaller and gives invalid data for the types it
+	// is invalid for.
+	frameID = frameBuf[0];
+	
 	switch( apiID )
 	{
-		case XBee::API_STATUS:			return STATUS;			break;
-		case XBee::API_AT_RESP:			return AT_RESP;			break;
-		case XBee::API_AT_RESP_REMOTE:	return AT_RESP_REMOTE;	break;
-		case XBee::API_TX_STATUS:		return TX_STATUS;		break;
-		case XBee::API_RX_16:			return RX_DATA;			break;
-		case XBee::API_RX_64:			return RX_DATA;			break;
+		case XBee::API_STATUS:	
+			type = STATUS;			
+			status = frameBuf[0];
+			break;
 		
-		default: 						return INVALID; 		break;
+		case XBee::API_AT_RESP:
+			type = AT_RESP;
+			cmd[0] = frameBuf[1];
+			cmd[1] = frameBuf[2];
+			status = frameBuf[3];
+			payloadSize -= 4;
+			payloadPtr = &frameBuf[4];
+			break;
+		
+		case XBee::API_AT_RESP_REMOTE:
+			type = AT_RESP;
+			parseLongAddr( &frameBuf[1] );		
+			parseShortAddr( &frameBuf[9] );
+			cmd[0] = frameBuf[11];
+			cmd[1] = frameBuf[12];
+			status = frameBuf[13];
+			payloadSize -= 14;
+			payloadPtr = &frameBuf[14];
+			break;
+		
+		case XBee::API_TX_STATUS:		
+			type = TX_STATUS;
+			status = frameBuf[1];
+			break;
+	
+		case XBee::API_RX_16:
+			type = RX_DATA;	
+			parseShortAddr( &frameBuf[0] );
+			rssi = -(frameBuf[2]);			
+			optionsmap = frameBuf[3];
+			payloadSize -= 4;
+			payloadPtr = &frameBuf[4];
+			break;
+
+		case XBee::API_RX_64:
+			type = RX_DATA;	
+			parseLongAddr( &frameBuf[0] );		
+			rssi = -(frameBuf[8]);			
+			optionsmap = frameBuf[9];		
+			payloadSize -= 10;
+			payloadPtr = &frameBuf[10];
+			break;
+		
+		default:
+		 	type = INVALID;
+	 		break;
 	}
 }
-
-
-byte XBeeReceivePacket::getFrameID() const
-{
-	return frameBuf[0];
-}
-
-
-byte XBeeReceivePacket::getStatus() const
-{
-	return frameBuf[1];
-}
-
-
-
-#if 0
-/**
- * 
-**/
-const void *XBeeReceivePacket::getPayload()
-{
-	return NULL;
-}
-
-
-size_t getPayloadLen()
-{
-	return 0;
-}
-
-bool isShortAddress()
-{
-	return true;
-}
-
-bool isLongAddress()
-{
-	return true;
-}
-#endif

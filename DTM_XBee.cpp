@@ -2,7 +2,10 @@
 
 
 #include "DTM_XBee.h"
+#include "Diag.h"
 
+
+//extern Diag diag;
 
 
 //--------------------------------------------------------------------------------------------------
@@ -28,15 +31,6 @@ void XBee::begin( unsigned long baud )
 }
 
 
-bool clientAvailable();
-int clientRead();
-void clientWrite( byte b );
-
-void debug( const char *name, byte b );
-void debug( const char *name, int x );
-
-
-
 /**
  * This returns true if a message packet has been completely received and is ready to be processed.  In this case you MUST handle the message
  * before calling this method again, as the next call will discard the current packet's data and start building a new one.
@@ -54,11 +48,11 @@ bool XBee::receiveWait( XBeeReceivePacket *packet, int timeout )
 	
 	//unsigned long t = millis();
 	
-	while( clientAvailable() )
+	while( Serial.available() )
 	{
-		byte b = clientRead();
+		byte b = Serial.read();
 		
-		debug( "Packet char", b );
+		Diag::debug( "Packet char", b );
 		
 		if( state == S_EMPTY )
 		{
@@ -76,22 +70,21 @@ bool XBee::receiveWait( XBeeReceivePacket *packet, int timeout )
 		else if( state == S_GOT_HI_LEN )
 		{
 			inboundLen |= b;
-			debug( "Inbund len", inboundLen );
+			Diag::debug( "Inbund len", inboundLen );
 			state = S_GOT_LO_LEN;
 		}
 		else if( state == S_GOT_LO_LEN )
 		{
+			packet->reset();		// Set some fields to their defaults
 			packet->apiID = b;
 			inboundCsum = b;
-			packet->payloadSize = 0;
-			packet->overflow = 0;
 			//needCount = inboundLen - 1;
 			state = S_GOT_API;
 		}
 		else if( state == S_GOT_API )
 		{
 			// Now we just accumulate characters into the frame buffer
-			debug( "Payload Size", packet->payloadSize );
+			Diag::debug( "Payload Size", packet->payloadSize );
 			if( packet->payloadSize < (inboundLen-1) )
 			{
 				if( packet->payloadSize < packet->frameBufLen )
@@ -113,9 +106,9 @@ bool XBee::receiveWait( XBeeReceivePacket *packet, int timeout )
 			else
 			{
 				// Don't need any more, so this is the checksum!
-				debug( "Got csum byte", b );
+				Diag::debug( "Got csum byte", b );
 				inboundCsum += b;
-				debug( "Final checksum", inboundCsum );
+				Diag::debug( "Final checksum", inboundCsum );
 				if( inboundCsum == 0xFF )
 				{
 					// Checksum is good
@@ -123,11 +116,15 @@ bool XBee::receiveWait( XBeeReceivePacket *packet, int timeout )
 				}
 				else
 				{
-					// Bad checksum.
+					// Bad checksum.  Set to false by default so we don't do anything here.
 					badChecksumCount++;
-					packet->checksumOK = false;
+					//packet->checksumOK = false;
 				}
 
+				// Now that we have all the data, give the packet object a chance to parse out
+				// and populate any cached data fields.
+				packet->populateFields();
+				
 				state = S_COMPLETE;
 				break;
 			}
@@ -322,8 +319,8 @@ void XBee::emit( byte b )
 	Serial.print( b, HEX );
 	Serial.print( " " );
 #else
-	//Serial.write( b );
-	clientWrite( b );
+	Serial.write( b );
+	//clientWrite( b );
 #endif
 	outboundCsum += b;	
 }
