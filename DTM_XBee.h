@@ -18,9 +18,7 @@
 
 class XBee {
 public:
-	XBee();
-	
-	void begin( unsigned long baud );
+	XBee( Stream &_stream );
 	
 	bool receiveWait( XBeeReceivePacket *packet, int timeout );
 
@@ -60,7 +58,9 @@ public:
 	int overflowCount;
 	int badChecksumCount;
 	
-private:	
+private:
+	Stream &stream;
+	
 	byte outboundCsum;			// This is an instance variable so we can share it with the emit() method.
 
 	// These variables apply to the inbound packet.

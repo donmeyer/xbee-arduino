@@ -34,12 +34,6 @@ public:
 	/** Returns true if the checksum was ok and there was no buffer overflow. */
 	bool isOK() const { return ( checksumOK && (overflow == 0) ); }
 
-	/** Valid for AT Response, RX Data */
-	//const byte *getPayload() const { return frameBuf; }
-
-	/** Valid for AT Response, RX Data */
-	//int getPayloadSize() const { return payloadSize; }
-	
 	bool isAddressBroadcast() const { return optionsmap & 0x01 ? true : false; }
 	bool isPANBroadcast() const { return optionsmap & 0x02 ? true : false; }
 	

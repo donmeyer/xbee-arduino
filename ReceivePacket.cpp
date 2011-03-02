@@ -5,8 +5,6 @@
 
 
 
-// If called without frame buf???  Arduino has no malloc(), right?
-
 XBeeReceivePacket::XBeeReceivePacket( byte *_frameBuf, size_t _frameBufLen )
 :	XBeePacket(),
 	frameBuf( _frameBuf ),

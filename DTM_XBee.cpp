@@ -5,30 +5,16 @@
 #include "Diag.h"
 
 
-//extern Diag diag;
 
-
-//--------------------------------------------------------------------------------------------------
-//--------------------------------------------------------------------------------------------------
-//--------------------------------------------------------------------------------------------------
-//--------------------------------------------------------------------------------------------------
-//--------------------------------------------------------------------------------------------------
-
-
-XBee::XBee()
-:	state( S_EMPTY ),
+XBee::XBee( Stream &_stream )
+:	stream( _stream ),
+	state( S_EMPTY ),
 	onlyGoodPackets( true ),
 	overflowCount( 0 ),
 	badChecksumCount( 0 )
 {	
 }
 
-
-
-void XBee::begin( unsigned long baud )
-{
-	Serial.begin( baud );
-}
 
 
 /**
@@ -48,9 +34,9 @@ bool XBee::receiveWait( XBeeReceivePacket *packet, int timeout )
 	
 	//unsigned long t = millis();
 	
-	while( Serial.available() )
+	while( stream.available() )
 	{
-		byte b = Serial.read();
+		byte b = stream.read();
 		
 		Diag::debug( "Packet char", b );
 		
@@ -70,7 +56,7 @@ bool XBee::receiveWait( XBeeReceivePacket *packet, int timeout )
 		else if( state == S_GOT_HI_LEN )
 		{
 			inboundLen |= b;
-			Diag::debug( "Inbund len", inboundLen );
+			Diag::debug( "Inbound len", inboundLen );
 			state = S_GOT_LO_LEN;
 		}
 		else if( state == S_GOT_LO_LEN )
@@ -78,7 +64,6 @@ bool XBee::receiveWait( XBeeReceivePacket *packet, int timeout )
 			packet->reset();		// Set some fields to their defaults
 			packet->apiID = b;
 			inboundCsum = b;
-			//needCount = inboundLen - 1;
 			state = S_GOT_API;
 		}
 		else if( state == S_GOT_API )
@@ -206,7 +191,7 @@ void XBee::send( const XBeeTransmitPacket *packet )
 	emit( 0xFF - outboundCsum );
 
 #ifdef DEBUG	
-	Serial.println( "---" );
+	Diag::debug( "---" );
 #endif
 }
 
@@ -281,7 +266,7 @@ void XBee::sendAT( const XBeeATCmdPacket *packet )
 	emit( 0xFF - outboundCsum );
 
 #ifdef DEBUG	
-	Serial.println( "---" );
+	Diag::debug( "---" );
 #endif
 }
 
@@ -316,10 +301,9 @@ void XBee::emitLongAddr( const XBeeOutboundPacket *packet )
 void XBee::emit( byte b )
 {
 #ifdef DEBUG
-	Serial.print( b, HEX );
-	Serial.print( " " );
+	Diag::debugHex( "emit", HEX );
 #else
-	Serial.write( b );
+	stream.write( b );
 	//clientWrite( b );
 #endif
 	outboundCsum += b;	
