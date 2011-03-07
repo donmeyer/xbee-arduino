@@ -19,9 +19,9 @@ XBeePacket::XBeePacket()
 /**
  * Base class ctor.
 **/
-XBeePacket::XBeePacket( word _shortAddr )
+XBeePacket::XBeePacket( word shortAddr )
 :	addrType( ADDR_SHORT ),
-	shortAddr( _shortAddr )
+	_shortAddr( shortAddr )
 {
 }
 
@@ -29,11 +29,11 @@ XBeePacket::XBeePacket( word _shortAddr )
 /**
  * Base class ctor.
 **/
-XBeePacket::XBeePacket( unsigned long _highAddr, unsigned long _lowAddr )
+XBeePacket::XBeePacket( unsigned long highAddr, unsigned long lowAddr )
 :	addrType( ADDR_LONG ),
-	highAddr( _highAddr ),
-	lowAddr( _lowAddr ),
-	shortAddr( 0xFFFE )			// Needed for the remote AT command
+	_highAddr( highAddr ),
+	_lowAddr( lowAddr ),
+	_shortAddr( 0xFFFE )			// Needed for the remote AT command
 {	
 }
 
@@ -41,9 +41,9 @@ XBeePacket::XBeePacket( unsigned long _highAddr, unsigned long _lowAddr )
 
 void XBeePacket::parseShortAddr( byte *p )
 {
-	shortAddr = *p<<8;
+	_shortAddr = *p<<8;
 	p++;
-	shortAddr |= *p;
+	_shortAddr |= *p;
 
 	addrType = ADDR_SHORT;
 }
@@ -51,21 +51,21 @@ void XBeePacket::parseShortAddr( byte *p )
 
 void XBeePacket::parseLongAddr( byte *p )
 {
-	highAddr = *p<<24;
+	_highAddr = *p<<24;
 	p++;
-	highAddr |= *p<<16;
+	_highAddr |= *p<<16;
 	p++;
-	highAddr |= *p<<8;
+	_highAddr |= *p<<8;
 	p++;
-	highAddr |= *p;
+	_highAddr |= *p;
 	
-	lowAddr = *p<<24;
+	_lowAddr = *p<<24;
 	p++;
-	lowAddr |= *p<<16;
+	_lowAddr |= *p<<16;
 	p++;
-	lowAddr |= *p<<8;
+	_lowAddr |= *p<<8;
 	p++;
-	lowAddr |= *p;
+	_lowAddr |= *p;
 
 	addrType = ADDR_LONG;
 }

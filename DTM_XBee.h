@@ -54,17 +54,17 @@ public:
 	/** If true, we don't return packets that overflow or fail the checksum. */
 	bool onlyGoodPackets;
 	
-	// Some statistics
+	// Some statistics.  These are maintained regardless of wether or not we retunr bad packes as well as good ones.
 	int overflowCount;
 	int badChecksumCount;
 	
 private:
-	Stream &stream;
+	Stream &stream;			// Stream used to talk to the XBee modem.
 	
-	byte outboundCsum;			// This is an instance variable so we can share it with the emit() method.
+	byte outboundCsum;		// This is an instance variable so we can share it with the emit() method.
 
 	// These variables apply to the inbound packet.
-	byte inboundCsum;			// Checksum of the inbound packet
+	byte inboundCsum;		// Checksum of the inbound packet
 	int inboundLen;			// Length value from the incoming packet.
 	enum { S_EMPTY, S_GOT_START, S_GOT_HI_LEN, S_GOT_LO_LEN, S_GOT_API, S_COMPLETE } state;
 };

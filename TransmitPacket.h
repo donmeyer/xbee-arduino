@@ -42,9 +42,7 @@ public:
 	XBeeATCmdPacket( unsigned long _highAddr, unsigned long _lowAddr );
 	
 	void set( char _cmd1, char _cmd2, const char *arg=NULL );
-	//void set( char _cmd1, char _cmd2 );
 	void set( const char *cmd );
-	//void set( char cmd1, char cmd2, unsigned long arg );
 	
 	char getCmd1() const { return cmd1; }
 	char getCmd2() const { return cmd2; }
@@ -52,16 +50,18 @@ public:
 	
 public:
 	/**
-	 * For local commands, this controls wether or not the apply immediatly or are queued.
+	 * For local commands, this controls wether or not the apply immediately or are queued.
 	 * If true, they apply immediately (API ID 0x08).  If false they queue (API ID 0x09)
+	 * 
 	 * For remote commands this does the same thing essentially.
-	 * The default is true (changes apply immediatly)
+	 * 
+	 * The default is true (changes apply immediately)
 	**/
 	bool applyChanges;
+
 private:
 	char cmd1;
 	char cmd2;
-	//char argBuf[9];
 	const char *strArg;
 };
 

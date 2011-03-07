@@ -16,9 +16,9 @@ public:
 	bool isShortAddr() const { return addrType == ADDR_SHORT; }
 	bool isLongAddr() const { return addrType == ADDR_LONG; }
 	
-	word getShortAddr() const { return shortAddr; }
-	unsigned long getHighAddr() const { return highAddr; }
-	unsigned long getLowAddr() const { return lowAddr; }
+	word shortAddr() const { return _shortAddr; }
+	unsigned long highAddr() const { return _highAddr; }
+	unsigned long lowAddr() const { return _lowAddr; }
 
 protected:
 	XBeePacket();
@@ -31,9 +31,9 @@ protected:
 protected:
 	enum { ADDR_LOCAL, ADDR_SHORT, ADDR_LONG } addrType;
 	
-	word shortAddr;
-	unsigned long highAddr;
-	unsigned long lowAddr;
+	word _shortAddr;
+	unsigned long _highAddr;
+	unsigned long _lowAddr;
 };
 
 

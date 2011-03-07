@@ -22,7 +22,6 @@ void XBeeReceivePacket::reset()
 }
 
 
-
 /**
  * Called by the XBee class's receive method to fill in any cached fields in the receive packet.
  * This is called after the packet has been completely received.

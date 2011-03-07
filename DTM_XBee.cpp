@@ -2,8 +2,10 @@
 
 
 #include "DTM_XBee.h"
-#include "Diag.h"
 
+#ifdef DEBUG
+#include "Diag.h"
+#endif
 
 
 XBee::XBee( Stream &_stream )
@@ -27,97 +29,115 @@ XBee::XBee( Stream &_stream )
 **/ 
 bool XBee::receiveWait( XBeeReceivePacket *packet, int timeout )
 {
-	if( state == S_COMPLETE )
-	{
-		state = S_EMPTY;
-	}
+	unsigned long start = millis();
 	
-	//unsigned long t = millis();
-	
-	while( stream.available() )
+	for(;;)
 	{
-		byte b = stream.read();
-		
-		Diag::debug( "Packet char", b );
-		
-		if( state == S_EMPTY )
+		if( timeout >= 0 )
 		{
-			// Looking for the start delimiter
-			if( b == START_DELIMITER )
+			// User does not want to wait forever
+			unsigned long elapsed = millis() - start;
+			if( elapsed > timeout )
 			{
-				state = S_GOT_START;
-			}
-		}
-		else if( state == S_GOT_START )
-		{			
-			inboundLen = b<<8;
-			state = S_GOT_HI_LEN;
-		}
-		else if( state == S_GOT_HI_LEN )
-		{
-			inboundLen |= b;
-			Diag::debug( "Inbound len", inboundLen );
-			state = S_GOT_LO_LEN;
-		}
-		else if( state == S_GOT_LO_LEN )
-		{
-			packet->reset();		// Set some fields to their defaults
-			packet->apiID = b;
-			inboundCsum = b;
-			state = S_GOT_API;
-		}
-		else if( state == S_GOT_API )
-		{
-			// Now we just accumulate characters into the frame buffer
-			Diag::debug( "Payload Size", packet->payloadSize );
-			if( packet->payloadSize < (inboundLen-1) )
-			{
-				if( packet->payloadSize < packet->frameBufLen )
-				{
-					inboundCsum += b;
-					packet->frameBuf[packet->payloadSize++] = b;					
-				}
-				else
-				{
-					// Overflow
-					if( packet->overflow == 0 )
-					{
-						// Log this overflow one time
-						overflowCount++;
-					}
-					packet->overflow++;
-				}
-			}
-			else
-			{
-				// Don't need any more, so this is the checksum!
-				Diag::debug( "Got csum byte", b );
-				inboundCsum += b;
-				Diag::debug( "Final checksum", inboundCsum );
-				if( inboundCsum == 0xFF )
-				{
-					// Checksum is good
-					packet->checksumOK = true;
-				}
-				else
-				{
-					// Bad checksum.  Set to false by default so we don't do anything here.
-					badChecksumCount++;
-					//packet->checksumOK = false;
-				}
-
-				// Now that we have all the data, give the packet object a chance to parse out
-				// and populate any cached data fields.
-				packet->populateFields();
-				
-				state = S_COMPLETE;
+				// And the desired number of milliseconds has passed.
 				break;
+			}			
+		}
+		
+		if( stream.available() )
+		{
+			byte b = stream.read();
+
+#ifdef DEBUG
+			Diag::debug( "Packet char", b );
+#endif
+			if( state == S_EMPTY )
+			{
+				// Looking for the start delimiter
+				if( b == START_DELIMITER )
+				{
+					state = S_GOT_START;
+				}
+			}
+			else if( state == S_GOT_START )
+			{			
+				inboundLen = b<<8;
+				state = S_GOT_HI_LEN;
+			}
+			else if( state == S_GOT_HI_LEN )
+			{
+				inboundLen |= b;
+#ifdef DEBUG
+				Diag::debug( "Inbound len", inboundLen );
+#endif				
+				state = S_GOT_LO_LEN;
+			}
+			else if( state == S_GOT_LO_LEN )
+			{
+				packet->reset();		// Set some fields to their defaults
+				packet->apiID = b;
+				inboundCsum = b;
+				state = S_GOT_API;
+			}
+			else if( state == S_GOT_API )
+			{
+				// Now we just accumulate characters into the frame buffer
+#ifdef DEBUG
+				Diag::debug( "Payload Size", packet->payloadSize );
+#endif				
+				if( packet->payloadSize < (inboundLen-1) )
+				{
+					if( packet->payloadSize < packet->frameBufLen )
+					{
+						inboundCsum += b;
+						packet->frameBuf[packet->payloadSize++] = b;					
+					}
+					else
+					{
+						// Overflow
+						if( packet->overflow == 0 )
+						{
+							// Log this overflow one time
+							overflowCount++;
+						}
+						packet->overflow++;
+					}
+				}
+				else
+				{
+					// Don't need any more, so this is the checksum!
+					inboundCsum += b;
+#ifdef DEBUG
+					Diag::debug( "Got csum byte", b );
+					Diag::debug( "Final checksum", inboundCsum );
+#endif				
+					if( inboundCsum == 0xFF )
+					{
+						// Checksum is good
+						packet->checksumOK = true;
+					}
+					else
+					{
+						// Bad checksum.  Set to false by default so we don't do anything here.
+						badChecksumCount++;
+						//packet->checksumOK = false;
+					}
+
+					// Now that we have all the data, give the packet object a chance to parse out
+					// and populate any cached data fields.
+					packet->populateFields();
+
+					state = S_COMPLETE;
+					break;
+				}
 			}
 		}
 	}
 	
 	if( state == S_COMPLETE )
 	{
+		state = S_EMPTY;		// Go back to looking for a new packet									
+
 		if( ! onlyGoodPackets || packet->isOK() )
 		{
 			// Either we want bad packets or this one was good.
@@ -125,7 +145,6 @@ bool XBee::receiveWait( XBeeReceivePacket *packet, int timeout )
 		}
 		else
 		{
-			state = S_EMPTY;		// Go back to looking for a new packet									
 			return false;
 		}
 	}
@@ -274,7 +293,7 @@ void XBee::sendAT( const XBeeATCmdPacket *packet )
 
 void XBee::emitShortAddr( const XBeeOutboundPacket *packet )
 {
-	word addr = packet->getShortAddr();
+	word addr = packet->shortAddr();
 	emit( addr>>8 );
 	emit( addr & 0x00FF );
 }
@@ -284,13 +303,13 @@ void XBee::emitLongAddr( const XBeeOutboundPacket *packet )
 {
 	unsigned long addr;
 	
-	addr = packet->getHighAddr();
+	addr = packet->highAddr();
 	emit( addr>>24 );
 	emit( addr>>16 );
 	emit( addr>>8 );
 	emit( addr & 0x000000FF );	
 
-	addr = packet->getLowAddr();
+	addr = packet->lowAddr();
 	emit( addr>>24 );
 	emit( addr>>16 );
 	emit( addr>>8 );

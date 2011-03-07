@@ -1,10 +1,12 @@
-// Transmit.pde
+// Remote_AT.pde
+
 
 #include "DTM_XBee.h"
 
 
+
 /*
- * This is an example of transmitting a data packet to a remote XBee modem from an XBee modem
+ * This is an example of transmitting an AT command packet to a remote XBee modem from an XBee modem
  * connected to this Arduino.
  * 
  * Assumptions:
@@ -28,9 +30,6 @@ XBee xbee( Serial );
 word remoteShortAddr = 0x2425;
 
 
-int txPauseCount;
-
-
 // Allocate a buffer to hold the bytes we receive from our modem.
 // This can be smaller if you know that none of the data you plan to receive
 // needs this much room.
@@ -44,40 +43,32 @@ XBeeReceivePacket rcv( buf, sizeof(buf) );
 void setup()
 {
 	// We will use the LED on pin 13 to indicate when we succeed in transmitting a packet.
-	pinMode( 13, OUTPUT );
+	pinMode(13, OUTPUT);
 
 	// We talk to the XBee modem on the hardware serial port at its default baud.
 	Serial.begin( 9600 );
-}
 
 
+	// Create a Remote command packet using a 16-bit address
+	XBeeATCmdPacket cmd( remoteShortAddr );
 
-void loop()
-{
-	if( ++txPauseCount >= 3 )
-	{
-		// Every third time that loop() is called, we send a packet to the other XBee modem
-		char msg[] = "Hello World";
-		XBeeTransmitPacket txpacket( remoteShortAddr, &msg, sizeof(msg) );		
-		xbee.send( &txpacket );
-		
-		txPauseCount = 0;
-	}
 
-	// Now we check for an incoming packet.  If no packet has been seen after we wait 200ms
+	// Set the command to "BD" which will return the remote modem's baud.
+	cmd.set( "BD" );
+	xbee.sendAT( &cmd );
+
+	// Now we check for an incoming packet.  If no packet has been seen after we wait 500ms
 	// the receive call will return false.
-	if( xbee.receiveWait( &rcv, 200 ) )
+	if( xbee.receiveWait( &rcv, 500 ) )
 	{
-    	// It returned true, so we got an inbound packet
+    	// It returned true, so we got a packet from the mode,
 
-		// Is this packet a TX status packet?
-		if( rcv.type == XBeeReceivePacket::TX_STATUS )
+		if( rcv.type == XBeeReceivePacket::AT_RESP )
 		{
-			// This is the status for our last transmit attempt.
-			// Check to see if our transmit attempt was successful.
+			// This is the status for our AT cmd.
 			if( rcv.status == 0 )
 			{
-				// Status was zero, so that means we transmitted successfully.
+				// Status was zero, so that means the command was ok.
 				digitalWrite(13, HIGH);  				
 			}
 		}
@@ -85,5 +76,41 @@ void loop()
 
 	delay( 1000 );
 
-    digitalWrite( 13, LOW );  
+    digitalWrite(13, LOW);  
+
+	delay( 2000 );
+
+
+	// Set the command to "MY" which will return the remote modem's short address.
+	// Note that we re-use the same packet.
+	cmd.set( 'M', 'Y' );
+	xbee.sendAT( &cmd );
+
+	// Now we check for an incoming packet.  If no packet has been seen after we wait 500ms
+	// the receive call will return false.
+	if( xbee.receiveWait( &rcv, 500 ) )
+	{
+    	// It returned true, so we got a packet from the mode,
+
+		if( rcv.type == XBeeReceivePacket::AT_RESP )
+		{
+			// This is the status for our AT cmd.
+			if( rcv.status == 0 )
+			{
+				// Status was zero, so that means the command was ok.
+				digitalWrite(13, HIGH);  				
+			}
+		}
+	}
+
+	delay( 1000 );
+
+    digitalWrite(13, LOW);  
 }
+
+
+
+void loop()
+{
+}
+
