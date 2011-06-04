@@ -31,7 +31,7 @@ XBeeReceivePacket rcv( buf, sizeof(buf) );
 
 void setup()
 {
-	// We will use the LED on pin 13 to indicate when we succeed in transmitting a packet.
+	// We will use the LED on pin 13 to indicate when we succeed in receiving a packet.
 	pinMode( 13, OUTPUT );
 
 	// We talk to the XBee modem on the hardware serial port at its default baud.

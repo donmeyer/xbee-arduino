@@ -73,7 +73,8 @@ void setup()
 
 
 	// Set the command to "MY" which will return the modem's short address.
-	// Note that we re-use the same packet.
+	// Note that we re-use the same packet, but we use a different form of the set() method just to
+	// show other ways to use the library.
 	cmd.set( "MY" );
 	
 	// Send it to the modem
@@ -107,5 +108,5 @@ void setup()
 
 void loop()
 {
+	// We don't actually do anything here - this is a one-shot demo.
 }
-
