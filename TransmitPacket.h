@@ -1,3 +1,6 @@
+// Copyright (c) 2011, Donald T. Meyer
+// All rights reserved.
+// This source code is licensed under the BSD 2-Clause License, full text available in license.txt.
 
 
 #ifndef DTM_XBEE_TRANSMITPACKET_H
