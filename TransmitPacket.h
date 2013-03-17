@@ -7,7 +7,7 @@
 #define DTM_XBEE_TRANSMITPACKET_H
 
 
-#include "WProgram.h"
+#include "Arduino.h"
 
 
 

@@ -7,7 +7,7 @@
 #ifndef DTM_XBEE_RECEIVEPACKET_H
 #define DTM_XBEE_RECEIVEPACKET_H
 
-#include "WProgram.h"
+#include "Arduino.h"
 
 #include "Packet.h"
 

@@ -6,7 +6,7 @@
 #define DTM_XBEE_PACKET_H
 
 
-#include "WProgram.h"
+#include "Arduino.h"
 
 
 

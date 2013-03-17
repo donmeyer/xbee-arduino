@@ -29,7 +29,7 @@
 #define DTM_XBEE_H
 
 
-#include "WProgram.h"
+#include "Arduino.h"
 
 #include "Packet.h"
 #include "ReceivePacket.h"
